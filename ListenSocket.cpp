@@ -22,12 +22,13 @@ ListenSocket::ListenSocket()
 	listenStatus = listen(soc, 5);
 }
 
+
 ListenSocket::~ListenSocket()
 {
 	closesocket(soc);
 }
 
-bool ListenSocket::canListen()
+const bool ListenSocket::canListen()
 {
 	if (soc == INVALID_SOCKET || optionStatus == SOCKET_ERROR || ioctrlStatus == SOCKET_ERROR || bindStatus == SOCKET_ERROR || listenStatus == SOCKET_ERROR)
 		return false;
@@ -35,7 +36,7 @@ bool ListenSocket::canListen()
 	return true;
 }
 
-SOCKET ListenSocket::getSocket()
+const SOCKET ListenSocket::getSocket()
 {
 	return soc;
 }

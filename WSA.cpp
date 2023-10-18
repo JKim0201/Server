@@ -1,12 +1,17 @@
 #include "WSA.h"
-#include <winsock.h>
+
 
 WSA::WSA()
 {
 	status = WSAStartup(MAKEWORD(2, 2), &wsa);
 }
 
-int WSA::getStatus()
+WSA::~WSA()
 {
-	return status;
+	WSACleanup();
+}
+
+const bool WSA::isRunning()
+{
+	return status == 0 ? true : false;
 }
