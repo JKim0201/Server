@@ -7,6 +7,7 @@
 #include <winsock.h>
 #include "WSA.h"
 #include "ListenSocket.h"
+#include <vector>
 
 using namespace std;
 
@@ -20,34 +21,51 @@ int main()
 	if (!listenSocket.canListen())
 		return -1;
 
-
+	const int MAX_CLIENT = 5;
+	vector<SOCKET> clientSockets;
+	
 	while (true)
 	{
-		SOCKET AcceptSocket;
-		AcceptSocket = accept(listenSocket.getSocket(), NULL, NULL);
-		if (AcceptSocket == INVALID_SOCKET) {
-			wprintf(L"accept failed with error: %ld\n", WSAGetLastError());
-			switch (WSAGetLastError())
-			{
+		if (clientSockets.size() < MAX_CLIENT)
+		{
+			SOCKET clientSocket = accept(listenSocket.getSocket(), NULL, NULL);
+			if (clientSocket == INVALID_SOCKET) {
+				switch (WSAGetLastError())
+				{
 				case WSAEWOULDBLOCK:
-				{
-					cout << "nothing in queue" << endl;
 					break;
-				}
 				default:
-				{
-					closesocket(listenSocket.getSocket());
-					WSACleanup();
-					exit(EXIT_FAILURE);
-					break;
+					return -1;
 				}
-			}	
+			}
+			else
+			{
+				clientSockets.push_back(clientSocket);
+			}
 		}
-		else
-			wprintf(L"Client connected.\n");
 
+		for (int i = 0; i < clientSockets.size(); i++)
+		{
+			char buffer[256];
+			int recvResult = recv(clientSockets[i], buffer, 256, 0);
+			if (recvResult == SOCKET_ERROR)
+			{
+				cout << "recv error, need action" << endl;
+			}
+			else if (recvResult == 0)
+			{
+				cout << "connection closed" << endl;
+				clientSockets.erase(clientSockets.begin() + i);
+			}
+			else
+			{
+				cout << buffer << endl;
+			}
+		}
 
-		cout << "doing stuff" << endl;
+		cout << "looping" << endl;
+		// send/recieve
+
 	}
 	
 	return 0;
