@@ -1,6 +1,12 @@
+/*NOTE
+* when to close socket?
+*/
+
 #include <iostream>
 //Project->Properties->Linker->Input->AdditionalDependency->wsock32.lib
 #include <winsock.h>
+#include <thread>
+#include <mutex>
 #define PORT 9997
 #define MAX_CLIENT 5
 
@@ -13,150 +19,76 @@ sockaddr_in& configureSocketAddress();
 void printBindResult(int bindResult);
 void printListenResult(int listenResult);
 
+
 int main()
 {
+
 	startWSA();
-	SOCKET Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	cout << Socket << endl;
-	printSocketResult(Socket);
+	SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	printSocketResult(listenSocket);
 
 	sockaddr_in SocketAddress = configureSocketAddress();
 
 	int socketOptionBuffer = 0;
-	if (setsockopt(Socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&socketOptionBuffer, sizeof(socketOptionBuffer) == SOCKET_ERROR))
+	if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&socketOptionBuffer, sizeof(socketOptionBuffer) == SOCKET_ERROR))
 	{
 		cout << "setsockopt failed" << endl;
 		WSACleanup();
-		closesocket(Socket);
+		closesocket(listenSocket);
+		exit(EXIT_FAILURE);
+	};
+	
+	u_long mode = 1;
+	if (ioctlsocket(listenSocket, FIONBIO, &mode) == SOCKET_ERROR)
+	{
+		printf("ioctlsocket failed with error: %ld\n", mode);
+		WSACleanup();
+		closesocket(listenSocket);
 		exit(EXIT_FAILURE);
 	}
 	else
-		cout << "setsockopt succeed: " << socketOptionBuffer << endl;
-
-
-	int BindResult = bind(Socket, (sockaddr*)&SocketAddress, sizeof(sockaddr));
-	printBindResult(BindResult);
-
-	int ListenResult = listen(Socket, MAX_CLIENT);
-	printListenResult(ListenResult);
-	
-	/*SOCKET Clients[MAX_CLIENT];
-	int clientCount = 0;
-	ZeroMemory(Clients, sizeof(SOCKET) * MAX_CLIENT);
-
-	fd_set FDRead, FDWrite, FDExcept;
-	
-	FD_ZERO(&FDRead);
-	FD_ZERO(&FDWrite);
-	FD_ZERO(&FDExcept);
-
-	FD_SET(Socket, &FDRead);
-	FD_SET(Socket, &FDExcept);*/
-
-	
-
-	fd_set FDReadConnect;
-	fd_set FDExceptConnect;
-	FD_ZERO(&FDReadConnect);
-	FD_ZERO(&FDExceptConnect);
-	
-	fd_set FDReadClient;
-	FD_ZERO(&FDReadClient);
-	
-	while (true)
 	{
-		if (FDReadClient.fd_count < MAX_CLIENT)
-		{
-			FD_SET(Socket, &FDReadConnect);
-			FD_SET(Socket, &FDExceptConnect);
-		}
-
-		if (FD_ISSET(Socket, &FDReadConnect))
-		{
-			timeval timeOut;
-			timeOut.tv_sec = 1;
-			timeOut.tv_usec = 0;
-			int selectResult = select(FDReadConnect.fd_count + FDExceptConnect.fd_count, &FDReadConnect, nullptr, &FDExceptConnect, &timeOut);
-			if (selectResult == SOCKET_ERROR)
-			{
-				cout << "Failed to select" << endl;
-				WSACleanup();
-				exit(EXIT_FAILURE);
-			}
-			else if (selectResult == 0)
-			{
-				cout << "Nothing on Port: " << PORT << endl;
-			}
-			else
-			{
-				if (FDReadClient.fd_count > MAX_CLIENT - 1)
-				{
-					FD_ZERO(&FDReadConnect);
-					FD_ZERO(&FDExceptConnect);
-				}
-				// when someone connects or communicates with a message over a dedicated connection
-				cout << "Data on port" << endl;
-				sockaddr_in ClientAddress;
-				int ClientAddressLength = sizeof(sockaddr_in);
-				int ClientSocket = accept(Socket, (sockaddr*)&ClientAddress, &ClientAddressLength);
-
-				if (ClientSocket == INVALID_SOCKET)
-				{
-					cout << "Failed to Accept, error code: " << WSAGetLastError() << endl;
-					WSACleanup();
-					exit(EXIT_FAILURE);
-				}
-				else
-				{
-					FD_SET(ClientSocket, &FDReadClient);
-					cout << "client's family: " << ClientAddress.sin_family << endl;//" address: " << ClientAddress.sin_data << endl;
-				}
-			}
-			
-		}
+		cout << "Mdoe: " << mode << endl;
 	}
 
-	//FD_READ
 
-	//fd_set FDRead, FDWrite, FDExcept;
 
-	//int maxFD = Socket;
-	//timeval TimeOut;
-	//TimeOut.tv_sec = 1;
-	//TimeOut.tv_usec = 0;
+	int bindResult = bind(listenSocket, (sockaddr*)&SocketAddress, sizeof(sockaddr));
+	printBindResult(bindResult);
 
-	//int Clients[MAX_CLIENT];
-	//int ClientsCount = 0;
-	//ZeroMemory(Clients, sizeof(int) * MAX_CLIENT);
-	//while (true)
-	//{
-	//	FD_ZERO(&FDRead);
-	//	FD_ZERO(&FDWrite);
-	//	FD_ZERO(&FDExcept);
+	int listenResult = listen(listenSocket, MAX_CLIENT);
+	printListenResult(listenResult);
 
-	//	FD_SET(Socket, &FDRead);
-	//	FD_SET(Socket, &FDExcept);
+	while (true)
+	{
+		SOCKET AcceptSocket;
+		AcceptSocket = accept(listenSocket, NULL, NULL);
+		if (AcceptSocket == INVALID_SOCKET) {
+			wprintf(L"accept failed with error: %ld\n", WSAGetLastError());
+			switch (WSAGetLastError())
+			{
+				case WSAEWOULDBLOCK:
+				{
+					cout << "nothing in queue" << endl;
+					break;
+				}
+				default:
+				{
+					closesocket(listenSocket);
+					WSACleanup();
+					exit(EXIT_FAILURE);
+					break;
+				}
+			}	
+		}
+		else
+			wprintf(L"Client connected.\n");
 
-	//	int selectResult = select(Socket + 1, &FDRead, &FDWrite, &FDExcept, &TimeOut);
 
-	//	if (selectResult == SOCKET_ERROR)
-	//	{
-	//		cout << "Failed to select" << endl;
-	//		WSACleanup();
-	//		exit(EXIT_FAILURE);
-	//	}
-	//	else if (selectResult == 0)
-	//	{
-	//		//time limit expire
-	//		cout << "Nothing on Port: " << PORT << endl;
-	//	}
-	//	else
-	//	{
-	//		// when someone connects or communicates with a message over a dedicated connection
-	//		cout << "Data on port" << endl;
-	//	}
-	//}
+		cout << "doing stuff" << endl;
+	}
 
+	closesocket(listenSocket);
 	WSACleanup();
 }
 
@@ -253,3 +185,4 @@ void printListenResult(int listenResult)
 		cout << "Succeed to listen to local port" << endl;
 	}
 }
+
