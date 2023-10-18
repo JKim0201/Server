@@ -59,6 +59,8 @@ int main()
 			}
 			else
 			{
+				//don't forget to clear buffer
+				// id/pwd + \0
 				cout << buffer << endl;
 			}
 		}
