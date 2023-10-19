@@ -11,7 +11,7 @@ WSA::~WSA()
 	WSACleanup();
 }
 
-const bool WSA::isRunning()
+const bool WSA::isRunning(void)
 {
 	return status == 0 ? true : false;
 }

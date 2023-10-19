@@ -1,9 +1,31 @@
 #include "ListenSocket.h"
 
 ListenSocket::ListenSocket()
-	:port(9997)
+	:port(9997),
+	status(initialize())
+{
+}
+
+ListenSocket::~ListenSocket()
+{
+	closesocket(soc);
+}
+
+const bool ListenSocket::isListening(void)
+{
+	return status == LSSTATUS::GOOD ? true : false;
+}
+
+const SOCKET ListenSocket::getSocket(void)
+{
+	return soc;
+}
+
+const  ListenSocket::LSSTATUS ListenSocket::initialize(void)
 {
 	soc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (soc == INVALID_SOCKET)
+		return LSSTATUS::BAD;
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
@@ -12,31 +34,19 @@ ListenSocket::ListenSocket()
 	memset(&(addr.sin_zero), 0, 8);
 
 	int socketOptionBuffer = 0;
-	optionStatus = setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (const char*)&socketOptionBuffer, sizeof(socketOptionBuffer));
+	if (SOCKET_ERROR == setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (const char*)&socketOptionBuffer, sizeof(socketOptionBuffer)))
+		return LSSTATUS::BAD;
 
 	u_long mode = 1;
-	ioctrlStatus = ioctlsocket(soc, FIONBIO, &mode);
+	if (SOCKET_ERROR == ioctlsocket(soc, FIONBIO, &mode))
+		return LSSTATUS::BAD;
 
-	bindStatus = bind(soc, (sockaddr*)&addr, sizeof(sockaddr));
+	if (SOCKET_ERROR == bind(soc, (sockaddr*)&addr, sizeof(sockaddr)))
+		return LSSTATUS::BAD;
 
-	listenStatus = listen(soc, 5);
+	if (SOCKET_ERROR ==listen(soc, 5))
+		return LSSTATUS::BAD;
+
+	return LSSTATUS::GOOD;
 }
 
-
-ListenSocket::~ListenSocket()
-{
-	closesocket(soc);
-}
-
-const bool ListenSocket::canListen()
-{
-	if (soc == INVALID_SOCKET || optionStatus == SOCKET_ERROR || ioctrlStatus == SOCKET_ERROR || bindStatus == SOCKET_ERROR || listenStatus == SOCKET_ERROR)
-		return false;
-
-	return true;
-}
-
-const SOCKET ListenSocket::getSocket()
-{
-	return soc;
-}

@@ -7,7 +7,7 @@ public:
 	WSA();
 	~WSA();
 
-	const bool isRunning();
+	const bool isRunning(void);
 private:
 	WSADATA wsa;
 	int status;
