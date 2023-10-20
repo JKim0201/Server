@@ -1,7 +1,12 @@
 #include "ListenSocket.h"
+#include <ws2tcpip.h>
+#include <string>
+#include "SQL.h"
+
 
 ListenSocket::ListenSocket()
-	:port(9997),
+	:backlog(5),
+	MAX_CLIENT(5),
 	status(initialize())
 {
 }
@@ -11,16 +16,6 @@ ListenSocket::~ListenSocket()
 	closesocket(soc);
 }
 
-const bool ListenSocket::isListening(void)
-{
-	return status == LSSTATUS::GOOD ? true : false;
-}
-
-const SOCKET ListenSocket::getSocket(void)
-{
-	return soc;
-}
-
 const  ListenSocket::LSSTATUS ListenSocket::initialize(void)
 {
 	soc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -28,14 +23,8 @@ const  ListenSocket::LSSTATUS ListenSocket::initialize(void)
 		return LSSTATUS::BAD;
 
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	//addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memset(&(addr.sin_zero), 0, 8);
-
-	int socketOptionBuffer = 0;
-	if (SOCKET_ERROR == setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (const char*)&socketOptionBuffer, sizeof(socketOptionBuffer)))
-		return LSSTATUS::BAD;
+	addr.sin_port = htons(9997);
+	inet_pton(AF_INET, "192.168.1.66", &(addr.sin_addr));
 
 	u_long mode = 1;
 	if (SOCKET_ERROR == ioctlsocket(soc, FIONBIO, &mode))
@@ -44,9 +33,58 @@ const  ListenSocket::LSSTATUS ListenSocket::initialize(void)
 	if (SOCKET_ERROR == bind(soc, (sockaddr*)&addr, sizeof(sockaddr)))
 		return LSSTATUS::BAD;
 
-	if (SOCKET_ERROR ==listen(soc, 5))
+	if (SOCKET_ERROR == listen(soc, backlog))
 		return LSSTATUS::BAD;
 
 	return LSSTATUS::GOOD;
 }
+
+
+const bool ListenSocket::isListening(void)
+{
+	return status == LSSTATUS::GOOD ? true : false;
+}
+
+void ListenSocket::acceptClients(SQL* sql)
+{
+	if (clientSockets.size() < MAX_CLIENT)
+	{
+		SOCKET clientSocket = accept(soc, NULL, NULL);
+		if (clientSocket == INVALID_SOCKET) {
+			switch (WSAGetLastError())
+			{
+			case WSAEWOULDBLOCK:
+				break;
+			default:
+				break;
+			}
+		}
+		else
+			clientSockets.push_back(clientSocket);
+	}
+
+	for (int i = 0; i < clientSockets.size(); i++)
+	{
+		const unsigned int BUFFER_SIZE = 256;
+		char recvBuffer[BUFFER_SIZE];
+		int recvResult = recv(clientSockets[i], recvBuffer, BUFFER_SIZE, 0);
+		if (recvResult == SOCKET_ERROR)
+		{
+			//cout << "recv error, need action" << endl;
+		}
+		else if (recvResult == 0)
+		{
+			// client dropped
+			clientSockets.erase(clientSockets.begin() + i);
+		}
+		else
+		{
+			const unsigned int userID = sql->authenticate(recvBuffer);
+			std::string sUserID = std::to_string(userID);
+			int sendResult = send(clientSockets[i], sUserID.c_str(), sUserID.length() + 1, 0);
+		}
+	}
+}
+
+
 

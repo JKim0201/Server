@@ -56,7 +56,6 @@ const unsigned int SQL::authenticate(const char* data) const
 	wstring wEmail(email.begin(), email.end());
 	wstring wPassword(password.begin(), password.end());
 	wstring wQuery = L"SELECT UserID FROM USERS WHERE Email = \'" + wEmail + L"\' AND Password = '" + wPassword + L"\'";
-
 	unsigned int userID = 0;
 	int execDirectResult = SQLExecDirect(statementHandle, (SQLWCHAR*)(wQuery.c_str()), SQL_NTS);
 	switch (execDirectResult)
@@ -66,13 +65,9 @@ const unsigned int SQL::authenticate(const char* data) const
 	case SQL_SUCCESS_WITH_INFO:
 		break;
 	case SQL_ERROR:
-		SQLWCHAR SQLState[1024];
+		/*SQLWCHAR SQLState[1024];
 		SQLWCHAR message[1024];
-		SQLGetDiagRec(SQL_HANDLE_STMT, statementHandle, 1, SQLState, NULL, message, 1024, NULL);
-		wprintf(L"SQL driver message: \n");
-		wprintf((SQLWCHAR*)message);
-		wprintf(L"SQL driver state: \n");
-		wprintf((SQLWCHAR*)SQLState);
+		SQLGetDiagRec(SQL_HANDLE_STMT, statementHandle, 1, SQLState, NULL, message, 1024, NULL);*/
 		return userID;
 	default:
 		return userID;

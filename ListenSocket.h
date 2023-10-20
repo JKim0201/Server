@@ -1,7 +1,8 @@
 #pragma once
-#include <winsock.h>
+#include <winsock2.h>
+#include <vector>
 
-
+class SQL;
 
 class ListenSocket
 {
@@ -16,12 +17,14 @@ public:
 	};
 
 	const bool isListening(void);
-	const SOCKET getSocket(void);
+	void acceptClients(SQL* sql);
 private:
 	SOCKET soc;
-	u_short port;
+	const int backlog;
 	sockaddr_in addr;
 	LSSTATUS status;
+	const int MAX_CLIENT;
+	std::vector<SOCKET> clientSockets;
 
 	const LSSTATUS initialize(void);
 };
