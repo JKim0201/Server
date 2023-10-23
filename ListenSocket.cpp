@@ -13,6 +13,7 @@ ListenSocket::ListenSocket()
 
 ListenSocket::~ListenSocket()
 {
+	shutdown(soc, SD_RECEIVE);
 	closesocket(soc);
 }
 
@@ -45,7 +46,7 @@ const bool ListenSocket::isListening(void)
 	return status == LSSTATUS::GOOD ? true : false;
 }
 
-void ListenSocket::acceptClients(SQL* sql)
+void ListenSocket::acceptClients()
 {
 	if (clientSockets.size() < MAX_CLIENT)
 	{
@@ -62,7 +63,10 @@ void ListenSocket::acceptClients(SQL* sql)
 		else
 			clientSockets.push_back(clientSocket);
 	}
+}
 
+void ListenSocket::recieveRequest(SQL* sql)
+{
 	for (int i = 0; i < clientSockets.size(); i++)
 	{
 		const unsigned int BUFFER_SIZE = 256;
@@ -75,6 +79,7 @@ void ListenSocket::acceptClients(SQL* sql)
 		else if (recvResult == 0)
 		{
 			// client dropped
+			closesocket(clientSockets.at(i));
 			clientSockets.erase(clientSockets.begin() + i);
 		}
 		else

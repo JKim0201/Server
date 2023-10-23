@@ -17,7 +17,8 @@ public:
 	};
 
 	const bool isListening(void);
-	void acceptClients(SQL* sql);
+	void acceptClients(void);
+	void recieveRequest(SQL* sql);
 private:
 	SOCKET soc;
 	const int backlog;

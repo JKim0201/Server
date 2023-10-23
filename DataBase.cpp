@@ -10,6 +10,7 @@
 #include "ListenSocket.h"
 #include <vector>
 #include <string>
+#include <Windows.h>
 
 using namespace std;
 
@@ -28,7 +29,14 @@ int main()
 		return -1;
 	
 	while (true)
-		listenSocket.acceptClients(&sql);
+	{
+		if (GetKeyState('Q') & 0x8000)
+		{
+			return 0;
+		}
+		listenSocket.acceptClients();
+		listenSocket.recieveRequest(&sql);
+	}
 	
 	return 0;
 }
